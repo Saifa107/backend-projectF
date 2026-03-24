@@ -5,11 +5,8 @@ import { IngredientItem } from "../model/Ingredient_Item";
 import util from "util";
 import { RowDataPacket } from "mysql2";
 import { ResultSetHeader } from "mysql2/promise";
-
-// 1. นำเข้าไลบรารีสำหรับการอัปโหลดและ Cloudinary
-import multer from "multer";
-import { v2 as cloudinary } from "cloudinary";
-import { CloudinaryStorage } from "multer-storage-cloudinary";
+import { Response } from "express"; // เผื่อไฟล์นี้ยังไม่ได้นำเข้า Response
+import { verifyToken, AuthRequest } from "./middleware/auth"; // นำเข้ายาม
 import dotenv from "dotenv";
 
 // โหลดค่าจากไฟล์ .env
@@ -23,10 +20,16 @@ export const router = express.Router();
 // ==========================================
 // Get Ingredient All (GET) แสดงวัตถุดิบทั้งหมด
 // ==========================================
-router.get('/', async (req,res)=>{
-    try {
+router.get('/', verifyToken, async (req: AuthRequest, res: Response) => {
+  try {
+    // 💡 พิเศษ: ถึงแม้เราจะดึงวัตถุดิบทั้งหมดโดยไม่ได้ใช้ uid ในคำสั่ง SQL
+    // แต่เราก็สามารถดึง uid หรือ username ออกมาดูได้ครับ (เช่น เอาไว้ทำ Log)
+    // const uid = req.user.uid;
+    // console.log(`[Log] ผู้ใช้รหัส ${uid} กำลังเปิดดูคลังวัตถุดิบรวม`);
+
     const [rows] = await conn.query("SELECT * FROM `ingredient` ");
     res.json(rows);
+    
   } catch (err) {
     console.error(err);
     res.status(500).send("Database error");

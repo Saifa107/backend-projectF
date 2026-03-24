@@ -5,7 +5,7 @@ import { UserItem } from "../model/user_model";
 import util from "util";
 import { RowDataPacket } from "mysql2";
 import { ResultSetHeader } from "mysql2/promise";
-
+import jwt from "jsonwebtoken";
 
 export const queryAsync = util.promisify(conn.query).bind(conn);
 export const router = express.Router();
@@ -41,39 +41,61 @@ router.get("/users/:id",async(req,res)=>{
 // ระบบ Login
 router.post("/login", async (req, res) => {
   try {
-    // 1. รับค่า username และ password ที่ผู้ใช้พิมพ์ส่งมาจาก Client (เช่น Flutter)
+    // 1. รับค่า username และ password 
     const { username, password } = req.body;
 
-    // 2. ตรวจสอบเบื้องต้นว่าส่งข้อมูลมาครบหรือไม่
+    // 2. ตรวจสอบเบื้องต้น
     if (!username || !password) {
       return res.status(400).json({ error: "กรุณากรอก username และ Password ให้ครบถ้วน" });
     }
 
-    // 3. ค้นหาผู้ใช้ในฐานข้อมูลด้วย username
-    // (ใช้ชื่อฟิลด์ u_name ตาม ER-Diagram ของคุณ)
+    // 3. ค้นหาผู้ใช้ในฐานข้อมูลด้วย username (ฟิลด์ u_name)
     const [rows] : any = await conn.query("SELECT * FROM `user` WHERE u_name = ?", [username]);
 
-    // 4. ถ้าหา email นี้ไม่เจอในระบบ
+    // 4. ถ้าหาไม่เจอ
     if (rows.length === 0) {
-      return res.status(401).json({ error: "อีเมล หรือ รหัสผ่าน ไม่ถูกต้อง" });
+      // แนะนำให้ตอบกลับรวมๆ ว่าชื่อหรือรหัสผ่านผิด เพื่อป้องกันคนสุ่มเดาชื่อผู้ใช้
+      return res.status(401).json({ error: "ชื่อผู้ใช้ หรือ รหัสผ่าน ไม่ถูกต้อง" }); 
     }
 
     const user = rows[0];
 
-    // 5. นำรหัสผ่านที่ส่งมา เทียบกับรหัสผ่านในฐานข้อมูล (u_password)
+    // 5. เทียบรหัสผ่านในฐานข้อมูล (u_password)
     if (user.u_password !== password) {
-      return res.status(401).json({ error: "อีเมล หรือ รหัสผ่าน ไม่ถูกต้อง" });
+      return res.status(401).json({ error: "ชื่อผู้ใช้ หรือ รหัสผ่าน ไม่ถูกต้อง" });
     }
 
-    // 6. ลบข้อมูลรหัสผ่านออกจาก Object ก่อนส่งกลับไปที่หน้าแอปเพื่อความปลอดภัย
+    // 6. ลบข้อมูลรหัสผ่านทิ้งเพื่อความปลอดภัย
     delete user.u_password;
 
-    // 7. ส่งข้อมูลแจ้งเตือนว่า Login สำเร็จ พร้อมกับส่งข้อมูล User กลับไป
-    res.json({ 
-      message: "เข้าสู่ระบบสำเร็จ", 
-      user: user 
-    });
+    // ==========================================
+    // 📌 เริ่มขั้นตอนสร้าง JWT Token
+    // ==========================================
+    
+    // 7. สร้าง Payload 
+    // (หมายเหตุ: ปรับคำว่า user.u_id ให้ตรงกับชื่อคอลัมน์ Primary Key ในตาราง user ของคุณนะครับ)
+    const payload = {
+      uid: user.u_id,       // รหัสประจำตัวผู้ใช้ 
+      username: user.u_name // ชื่อผู้ใช้
+      // role: user.u_role  // ถ้ามีระบบ Admin ให้ใส่บรรทัดนี้เพิ่มเข้าไปด้วย
+    };
 
+    // 8. สร้าง Token โดยใช้รหัสลับจากไฟล์ .env
+    const token = jwt.sign(
+      payload, 
+      process.env.JWT_SECRET as string, 
+      { expiresIn: '1d' } // อายุการใช้งาน 1 วัน
+    );
+
+    console.log("✅ Login Success:", user.u_name);
+    
+    // 9. ส่งข้อความ, Token และข้อมูล User กลับไปให้หน้าแอป
+    res.status(200).json({ 
+      message: "เข้าสู่ระบบสำเร็จ",
+      token: token, 
+      user: user // เราส่ง object user ที่ถูกลบรหัสผ่านในข้อ 6 ออกไปได้เลย
+    });
+    
   } catch (error) {
     console.error("❌ Login error:", error);
     res.status(500).json({ error: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
