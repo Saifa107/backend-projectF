@@ -1,32 +1,30 @@
-import { Request, Response, NextFunction } from "express";
+import { expressjwt, Request as JWTRequest } from "express-jwt";
 import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
 
-// ขยาย Request ให้รองรับตัวแปร user
-export interface AuthRequest extends Request {
-  user?: any;
+dotenv.config();
+
+// 1. ดึงรหัสลับจาก .env หรือใช้ค่าเริ่มต้น
+export const secret = process.env.JWT_SECRET || "this-is-top-secret";
+
+// 2. ตั้งค่ายามส่วนกลาง (Global Middleware)
+export const jwtAuthen = expressjwt({
+  secret: secret,
+  algorithms: ["HS256"],
+  requestProperty: "user" // 💡 สำคัญ: บรรทัดนี้จะทำให้เราดึงข้อมูลผ่าน req.user ได้เหมือนเดิมครับ
+}).unless({
+  // 📌 ระบุเส้นทางที่ "คนนอก" เข้าได้โดยไม่ต้องมี Token
+  path: [
+    "/login",           // ต้องปล่อยผ่านให้คนล็อกอิน
+    "/add",        // ต้องปล่อยให้คนสมัครสมาชิก
+  ],
+});
+
+// 3. ฟังก์ชันสำหรับสร้าง Token
+export function generateToken(payload: any): string {
+  const token: string = jwt.sign(payload, secret, {
+    expiresIn: "1d",     // อายุ 30 วัน (ปรับได้ตามต้องการ)
+    issuer: "MyProject"   // ชื่อระบบที่ออกบัตร
+  });
+  return token;
 }
-
-export const verifyToken = (req: AuthRequest, res: Response, next: NextFunction) => {
-  // 1. ดึง Token ออกมาจาก Header ที่ชื่อว่า Authorization
-  const authHeader = req.headers['authorization'];
-  
-  // รูปแบบมาตรฐานจะเป็น "Bearer <token_string>" เราจึงต้อง split แยกเอาแค่ตัว token
-  const token = authHeader && authHeader.split(' ')[1]; 
-
-  if (!token) {
-    return res.status(401).json({ error: "Access Denied. ไม่มี Token ยืนยันตัวตน" });
-  }
-
-  try {
-    // 2. ตรวจสอบบัตรว่าของจริงไหม หรือหมดอายุหรือยัง
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
-    
-    // 3. ฝังข้อมูลผู้ใช้ (Payload) ลงไปใน Request เพื่อให้ API ถัดไปเอาไปใช้ต่อได้
-    req.user = decoded; 
-    
-    // 4. บัตรผ่าน! เชิญเข้าไปทำ API ถัดไปได้
-    next(); 
-  } catch (error) {
-    return res.status(403).json({ error: "Invalid Token. บัตรปลอม หรือหมดอายุแล้ว" });
-  }
-};

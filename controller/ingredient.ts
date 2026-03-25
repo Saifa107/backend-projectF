@@ -6,7 +6,8 @@ import util from "util";
 import { RowDataPacket } from "mysql2";
 import { ResultSetHeader } from "mysql2/promise";
 import { Response } from "express"; // เผื่อไฟล์นี้ยังไม่ได้นำเข้า Response
-import { verifyToken, AuthRequest } from "./middleware/auth"; // นำเข้ายาม
+
+
 import dotenv from "dotenv";
 
 // โหลดค่าจากไฟล์ .env
@@ -20,15 +21,11 @@ export const router = express.Router();
 // ==========================================
 // Get Ingredient All (GET) แสดงวัตถุดิบทั้งหมด
 // ==========================================
-router.get('/', verifyToken, async (req: AuthRequest, res: Response) => {
+router.get('/', async (req, res) => {
   try {
-    // 💡 พิเศษ: ถึงแม้เราจะดึงวัตถุดิบทั้งหมดโดยไม่ได้ใช้ uid ในคำสั่ง SQL
-    // แต่เราก็สามารถดึง uid หรือ username ออกมาดูได้ครับ (เช่น เอาไว้ทำ Log)
-    // const uid = req.user.uid;
-    // console.log(`[Log] ผู้ใช้รหัส ${uid} กำลังเปิดดูคลังวัตถุดิบรวม`);
 
     const [rows] = await conn.query("SELECT * FROM `ingredient` ");
-    res.json(rows);
+    res.status(200).json(rows);
     
   } catch (err) {
     console.error(err);

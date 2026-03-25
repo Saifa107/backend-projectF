@@ -5,6 +5,7 @@ import { router as food } from "./controller/food";
 import { router as foodmark } from "./controller/foodmark";
 import { router as images } from "./controller/images";
 import { router as uability } from "./controller/uability";
+import { jwtAuthen } from "./controller/middleware/auth";
 
 export const app = express();
 
@@ -19,6 +20,24 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "DELETE"],
 }));
 
+app.use(express.json());
+// ==========================================
+// 🛡️ 1. นำยามมาเฝ้าประตู (เรียกใช้ Global Middleware)
+// ==========================================
+app.use(jwtAuthen);
+
+// ==========================================
+// 🚨 2. ดักจับ Error กรณียามจับได้ว่าคนนอกแอบเข้า (Unauthorized)
+// ==========================================
+app.use((err: any, req: any, res: any, next: any) => {
+  if (err.name === "UnauthorizedError") {
+    // ส่ง Status 401 กลับไป พร้อมข้อความแจ้งเตือน
+    return res.status(401).json({ 
+      error: "Access Denied. ไม่มีสิทธิ์เข้าถึง กรุณาแนบ Token (Bearer) หรือล็อกอินใหม่" 
+    });
+  }
+  next(err);
+});
 //controller 
 app.use("/", user);
 app.use("/ingredient",ingredient);
