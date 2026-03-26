@@ -108,10 +108,6 @@ router.put("/update/:id", async (req, res) => {
 
     // 3.2 ดึงข้อมูลใหม่มาทับข้อมูลเดิม (Partial Update)
     // รองรับการส่ง key แบบสั้นๆ เช่น name, description, image หรือชื่อเต็ม
-    // const food_name = updateData.food_name || updateData.name || foodOri.food_name;
-    // const food_description = updateData.food_description || updateData.description || foodOri.food_description;
-    // const food_image = updateData.food_image || updateData.image || foodOri.food_image;
-    // const food_type_id  = updateData.food_type_id || updateData.food_type_id || foodOri.food_type_id;
 
     const updatefood : FoodItem = { ...foodOri, ...updateData };
 
