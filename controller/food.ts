@@ -1,6 +1,7 @@
 import express from "express";
 import { conn } from "../dbconnect";
 import { IngredientItem } from "../model/Ingredient_Item";
+import { FoodItem } from "../model/food_Item";
 
 import util from "util";
 import { RowDataPacket } from "mysql2";
@@ -107,10 +108,12 @@ router.put("/update/:id", async (req, res) => {
 
     // 3.2 ดึงข้อมูลใหม่มาทับข้อมูลเดิม (Partial Update)
     // รองรับการส่ง key แบบสั้นๆ เช่น name, description, image หรือชื่อเต็ม
-    const food_name = updateData.food_name || updateData.name || foodOri.food_name;
-    const food_description = updateData.food_description || updateData.description || foodOri.food_description;
-    const food_image = updateData.food_image || updateData.image || foodOri.food_image;
-    const food_type_id  = updateData.food_type_id || updateData.food_type_id || foodOri.food_type_id;
+    // const food_name = updateData.food_name || updateData.name || foodOri.food_name;
+    // const food_description = updateData.food_description || updateData.description || foodOri.food_description;
+    // const food_image = updateData.food_image || updateData.image || foodOri.food_image;
+    // const food_type_id  = updateData.food_type_id || updateData.food_type_id || foodOri.food_type_id;
+
+    const updatefood : FoodItem = { ...foodOri, ...updateData };
 
     // 3.3 บันทึกลง Database
     const updateSql = `
@@ -120,10 +123,10 @@ router.put("/update/:id", async (req, res) => {
     `;
     
     const [result] = await conn.execute<ResultSetHeader>(updateSql, [
-      food_name,
-      food_description,
-      food_image,
-      food_type_id,
+      updatefood.food_name,
+      updatefood.food_description,
+      updatefood.food_image,
+      updatefood.food_type_id,
       food_id
     ]);
 

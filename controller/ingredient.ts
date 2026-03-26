@@ -101,10 +101,11 @@ router.put("/update/:id", async (req, res) => {
     }
 
     const ingOri = rows[0];
+    // console.log(ingOri);
 
-    console.log(ingOri);
     const updateIngredient : IngredientItem = { ...ingOri, ...updateData };
-    console.log(updateIngredient);
+    // console.log(updateIngredient);
+
     // 3.3 บันทึกลง Database
     const updateSql = `
       UPDATE ingredient 
