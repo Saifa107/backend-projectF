@@ -230,3 +230,95 @@ router.post("/add-components", async (req, res) => {
     res.status(500).json({ error: "เกิดข้อผิดพลาดในการบันทึกข้อมูลส่วนประกอบอาหาร" });
   }
 });
+
+// ---------------------------------------------------------
+// สำหรับแนะนำอาหาร
+// ---------------------------------------------------------
+const INGREDIENTS = [
+    { id: 0, name: 'หมูสับ' },
+    { id: 1, name: 'ไก่' },
+    { id: 2, name: 'ใบกะเพรา' },
+    { id: 3, name: 'ไข่ไก่' },
+    { id: 4, name: 'พริก' }
+];
+
+const TOTAL_INGREDIENTS = INGREDIENTS.length;
+
+// 2D Matrix ของสูตรอาหาร (1 = ต้องใช้, 0 = ไม่ต้องใช้)
+const RECIPES = [
+    { id: 101, name: 'กะเพราหมูสับ', matrixRow: [1, 0, 1, 0, 1] },
+    { id: 102, name: 'ไข่เจียวหมูสับ', matrixRow: [1, 0, 0, 1, 0] },
+    { id: 103, name: 'ไก่ผัดพริก',   matrixRow: [0, 1, 0, 0, 1] }
+];
+// กำหนด Interface สำหรับ Request Body
+interface RecommendRequest {
+    userInventoryIds: number[]; // รับค่าเป็น Array ของ ID วัตถุดิบที่ผู้ใช้มี
+}
+
+router.post('/recommend', async (req, res) => {
+    try {
+        const { userInventoryIds } = req.body;
+
+        if (!userInventoryIds || !Array.isArray(userInventoryIds)) {
+            return res.status(400).json({ error: 'รูปแบบข้อมูล userInventoryIds ไม่ถูกต้อง' });
+        }
+
+        // [Step 1]: แปลงข้อมูลคลังผู้ใช้เป็น 1D Array (User Array)
+        // สร้าง Array ที่มีแต่เลข 0 ขนาดเท่าจำนวนวัตถุดิบทั้งหมด
+        const userArray: number[] = new Array(TOTAL_INGREDIENTS).fill(0);
+        
+        // ถ้าผู้ใช้มีวัตถุดิบไหน ให้เปลี่ยนช่องนั้นเป็น 1
+        userInventoryIds.forEach(id => {
+            if (id >= 0 && id < TOTAL_INGREDIENTS) {
+                userArray[id] = 1;
+            }
+        });
+
+        // [Step 2]: ทำ Linear Search วิ่งตรวจสอบ 2D Matrix ทีละแถว (ทีละสูตรอาหาร)
+        const recommendationResults = RECIPES.map(recipe => {
+            let matchCount = 0;
+            let totalNeeded = 0;
+            const missingIngredients: string[] = [];
+
+            // ตรวจสอบคอลัมน์ทีละช่อง (เทียบสูตรอาหารกับคลังผู้ใช้)
+            for (let j = 0; j < TOTAL_INGREDIENTS; j++) {
+                if (recipe.matrixRow[j] === 1) { // ถ้าเมนูนี้ "ต้องใช้" วัตถุดิบช่องที่ j
+                    totalNeeded++; // นับเพิ่มว่าเมนูนี้ใช้วัตถุดิบรวมกี่อย่าง
+                    
+                    if (userArray[j] === 1) { // ถ้าผู้ใช้ "มี" วัตถุดิบนี้ในคลัง
+                        matchCount++;
+                    } else { // ถ้าผู้ใช้ "ไม่มี"
+                        missingIngredients.push(INGREDIENTS[j]?.name ?? "ไม่ทราบชื่อวัตถุดิบ"); // เก็บชื่อวัตถุดิบที่ขาดไป
+                    }
+                }
+            }
+
+            // คำนวณเปอร์เซ็นต์ (หลีกเลี่ยงการหารด้วย 0 ในกรณีข้อมูลผิดพลาด)
+            let matchPercentage = 0;
+            if (totalNeeded > 0) {
+                matchPercentage = (matchCount / totalNeeded) * 100;
+            }
+
+            return {
+                recipeId: recipe.id,
+                recipeName: recipe.name,
+                matchPercentage: Math.round(matchPercentage * 100) / 100, // ปัดเศษทศนิยม 2 ตำแหน่ง
+                missingIngredients: missingIngredients,
+                canCookNow: matchPercentage === 100
+            };
+        });
+
+        // [Step 3]: จัดเรียง (Sorting) เมนูอาหารตามเปอร์เซ็นต์ความพร้อม จากมากไปน้อย
+        recommendationResults.sort((a, b) => b.matchPercentage - a.matchPercentage);
+
+        // คืนค่าผลลัพธ์เป็น JSON
+        return res.status(200).json({
+            status: 'success',
+            data: recommendationResults
+        });
+
+    } catch (error) {
+        console.error('Error in recommendation API:', error);
+        return res.status(500).json({ error: 'เกิดข้อผิดพลาดในระบบเซิร์ฟเวอร์' });
+    }
+});
