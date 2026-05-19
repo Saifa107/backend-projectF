@@ -140,9 +140,9 @@ router.put("/update/:id", async (req, res) => {
 // ==========================================
 // ลบข้อมูลเมนูอาหาร (DELETE)
 // ==========================================
-router.delete("/delete/:id", async (req, res) => {
+router.delete("/delete", async (req, res) => {
   try {
-    const food_id = req.params.id;
+    const food_id = req.body;
 
     // 1. ลบข้อมูลในตารางลูก (food_component) ที่ผูกกับ food_id นี้ออกก่อน
     const sqlComponent = "DELETE FROM `food_component` WHERE food_id = ?";
