@@ -144,20 +144,25 @@ router.delete("/delete/:id", async (req, res) => {
   try {
     const food_id = req.params.id;
 
-    const sql = "DELETE FROM `food` WHERE food_id = ?";
-    const [result] = await conn.execute<ResultSetHeader>(sql, [food_id]);
+    // 1. ลบข้อมูลในตารางลูก (food_component) ที่ผูกกับ food_id นี้ออกก่อน
+    const sqlComponent = "DELETE FROM `food_component` WHERE food_id = ?";
+    await conn.execute(sqlComponent, [food_id]);
+
+    // 2. เมื่อตารางลูกเคลียร์แล้ว จึงค่อยลบข้อมูลในตารางแม่ (food)
+    const sqlFood = "DELETE FROM `food` WHERE food_id = ?";
+    const [result] = await conn.execute<ResultSetHeader>(sqlFood, [food_id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: "ไม่พบข้อมูลเมนูอาหาร หรือถูกลบไปแล้ว" });
     }
 
     res.status(200).json({ 
-      message: "ลบเมนูอาหารสำเร็จ" 
+      message: "ลบเมนูอาหารและส่วนประกอบที่เกี่ยวข้องสำเร็จ" 
     });
 
   } catch (error) {
     console.error("❌ Delete Food Error:", error);
-    res.status(500).json({ error: "ไม่สามารถลบได้ เนื่องจากข้อมูลนี้อาจถูกใช้งานอยู่" });
+    res.status(500).json({ error: "เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ ไม่สามารถลบข้อมูลได้" });
   }
 });
 
