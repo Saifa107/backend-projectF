@@ -109,7 +109,7 @@ router.post("/login", async (req, res) => {
 router.post("/add", async (req, res) => {
   try {
     // 1. Destructuring: ดึงตัวแปรออกมาตรงๆ เพื่อให้โค้ดอ่านง่ายและปลอดภัยขึ้น
-    const { u_name, u_password, u_profile } = req.body as UserItem;
+    const { u_name, u_password, u_profile ,u_email} = req.body as UserItem;
 
     // 2. Validation: ตรวจสอบว่าส่งข้อมูลสำคัญมาครบไหม
     if (!u_name || !u_password) {
@@ -125,8 +125,8 @@ router.post("/add", async (req, res) => {
 
     // 5. Database Operation
     const sql = `
-      INSERT INTO user (u_name, u_password, u_profile, u_role) 
-      VALUES (?, ?, ?, 'user')
+      INSERT INTO user (u_name, u_password, u_profile, u_role, u_email) 
+      VALUES (?, ?, ?, 'user', ?)
     `;
     
     // 💡 สังเกตว่าเราใช้ hashedPassword แทน u_password แบบเดิม
@@ -134,6 +134,7 @@ router.post("/add", async (req, res) => {
       u_name,
       hashedPassword, 
       profileData,
+      u_email,
     ]);
 
     // 6. ส่งผลลัพธ์กลับไป (นิยมส่ง insertId กลับไปเผื่อ Frontend เอาไปทำอะไรต่อ)

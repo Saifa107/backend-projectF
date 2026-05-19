@@ -4,4 +4,5 @@ export interface UserItem {
     u_password: string;
     u_profile:  string;
     u_role:     string;
+    u_email:    string;
 }
